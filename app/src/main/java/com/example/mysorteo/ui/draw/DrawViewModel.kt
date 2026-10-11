@@ -52,7 +52,16 @@ class DrawViewModel(
     }
 
     fun selectDrawAndUser(drawId: String, userId: String) {
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                userEntry = null,
+                selectedNumbers = emptySet(),
+                manualInputText = "",
+                errorMessage = null,
+                successMessage = null
+            )
+        }
 
         drawJob?.cancel()
         drawJob = viewModelScope.launch {
@@ -66,15 +75,20 @@ class DrawViewModel(
             if (userId.isNotEmpty()) {
                 drawRepository.observeUserEntry(drawId, userId).collect { entry ->
                     _uiState.update { state ->
-                        // If user already registered an entry, preselect those numbers if selectedNumbers is empty
-                        val newSelected = if (entry != null && state.selectedNumbers.isEmpty()) {
+                        val newSelected = if (entry != null) {
                             entry.numbers.toSet()
                         } else {
                             state.selectedNumbers
                         }
-                        state.copy(userEntry = entry, selectedNumbers = newSelected)
+                        state.copy(
+                            userEntry = entry,
+                            selectedNumbers = newSelected,
+                            manualInputText = newSelected.sorted().joinToString(", ")
+                        )
                     }
                 }
+            } else {
+                _uiState.update { it.copy(userEntry = null, selectedNumbers = emptySet()) }
             }
         }
     }

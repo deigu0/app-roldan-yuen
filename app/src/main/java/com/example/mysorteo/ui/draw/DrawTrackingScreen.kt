@@ -1,6 +1,5 @@
 package com.example.mysorteo.ui.draw
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -20,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mysorteo.model.Draw
 import com.example.mysorteo.model.DrawnBall
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +46,9 @@ fun DrawTrackingScreen(
     
     val bolillasCount = drawnBalls.size
     val matchCount = matchedNumbers.size
-    val isDrawFinalized = (draw?.isCompleted == true) || (bolillasCount >= 6)
+    val isStatusFinalized = draw?.status?.equals("finalizado", ignoreCase = true) == true || draw?.status?.equals(
+        Draw.STATUS_CLOSED, ignoreCase = true) == true
+    val isDrawFinalized = isStatusFinalized && bolillasCount == 6
 
     val finalResultText: String? = when {
         isDrawFinalized -> if (matchCount == 6) "GANADOR" else "SIGUE INTENTANDO"
@@ -54,13 +56,10 @@ fun DrawTrackingScreen(
     }
 
     val drawStatusText: String = when {
-        bolillasCount == 0 -> "Esperando inicio del sorteo..."
-        isDrawFinalized -> "Sorteo finalizado"
-        else -> "Sorteo en curso"
+        isDrawFinalized -> "Sorteo Finalizado"
+        draw?.status?.equals("en curso", ignoreCase = true) == true || bolillasCount > 0 -> "En Curso"
+        else -> "Abierto"
     }
-
-    var showAdminControls by remember { mutableStateOf(false) }
-    var nextBallInput by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -69,14 +68,6 @@ fun DrawTrackingScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showAdminControls = !showAdminControls }) {
-                        Icon(
-                            imageVector = if (showAdminControls) Icons.Default.Tune else Icons.Default.Build,
-                            contentDescription = "Simulador/Admin"
-                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -161,75 +152,7 @@ fun DrawTrackingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            // Admin / Demo Controls Banner
-            AnimatedVisibility(visible = showAdminControls) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "🛠️ Panel de Control del Sorteo (Simulador)",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Publique bolillas una a una (orden de salida 1 a 6) para ver la actualización en tiempo real.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = nextBallInput,
-                                onValueChange = { nextBallInput = it },
-                                label = { Text("Número (1-45)") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            Button(
-                                onClick = {
-                                    val num = nextBallInput.toIntOrNull()
-                                    if (num != null && num in 1..45) {
-                                        drawViewModel.publishDrawnNumber(drawId, num)
-                                        nextBallInput = ""
-                                    }
-                                }
-                            ) {
-                                Text("Publicar Bolilla")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedButton(
-                            onClick = { drawViewModel.resetDraw(drawId) },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Reiniciar Sorteo (Limpiar bolillas)")
-                        }
-                    }
-                }
-            }
 
             // Status, Bolillas publicadas, Aciertos & Resultado Card
             Card(
@@ -321,7 +244,7 @@ fun DrawTrackingScreen(
                             }
                         } else {
                             // Wait message when draw is not finalized
-                            val message = if (bolillasCount == 0) {
+                            val message = if (bolillasCount == 0 && (draw?.status?.equals("abierto", ignoreCase = true) == true || draw?.isOpen == true)) {
                                 "Esperando inicio del sorteo..."
                             } else {
                                 "Sorteo en curso... Esperando resultados del sorteo..."

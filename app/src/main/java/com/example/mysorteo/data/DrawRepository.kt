@@ -39,9 +39,18 @@ class DrawRepository(
                 is Number -> {
                     list.add(DrawnBall(numero = item.toInt(), orden = index + 1))
                 }
+                is String -> {
+                    item.toIntOrNull()?.let {
+                        list.add(DrawnBall(numero = it, orden = index + 1))
+                    }
+                }
                 is Map<*, *> -> {
-                    val num = (item["numero"] as? Number ?: item["number"] as? Number)?.toInt()
-                    val ord = (item["orden"] as? Number ?: item["order"] as? Number)?.toInt() ?: (index + 1)
+                    val num = (item["numero"] as? Number ?: item["number"] as? Number
+                        ?: (item["numero"] as? String)?.toIntOrNull()
+                        ?: (item["number"] as? String)?.toIntOrNull())?.toInt()
+                    val ord = (item["orden"] as? Number ?: item["order"] as? Number
+                        ?: (item["orden"] as? String)?.toIntOrNull()
+                        ?: (item["order"] as? String)?.toIntOrNull())?.toInt() ?: (index + 1)
                     if (num != null) {
                         list.add(DrawnBall(numero = num, orden = ord))
                     }
@@ -86,7 +95,9 @@ class DrawRepository(
                 val name = snapshot.getString("nombre") ?: snapshot.getString("name") ?: DEFAULT_DRAW_NAME
                 val date = snapshot.getString("fecha") ?: snapshot.getString("date") ?: DEFAULT_DRAW_DATE
                 val status = snapshot.getString("estado") ?: snapshot.getString("status") ?: Draw.STATUS_OPEN
-                val drawnBallsDoc = parseBallsFromField(snapshot.get("bolillas") ?: snapshot.get("drawnNumbers"))
+                val drawnBallsDoc = parseBallsFromField(
+                    snapshot.get("bolillas") ?: snapshot.get("drawnNumbers") ?: snapshot.get("numeros")
+                )
 
                 currentDrawDoc = Draw(
                     id = snapshot.id,
@@ -100,11 +111,15 @@ class DrawRepository(
         }
 
         val bolillasListener = bolillasRef.addSnapshotListener { snapshot, error ->
-            if (error == null && snapshot != null && !snapshot.isEmpty) {
-                subcollectionBalls = snapshot.documents.mapNotNull { doc ->
-                    val num = doc.getLong("numero")?.toInt() ?: doc.getLong("number")?.toInt()
-                    val ord = doc.getLong("orden")?.toInt() ?: doc.getLong("order")?.toInt() ?: 1
-                    if (num != null) DrawnBall(numero = num, orden = ord) else null
+            if (error == null) {
+                if (snapshot != null && !snapshot.isEmpty) {
+                    subcollectionBalls = snapshot.documents.mapNotNull { doc ->
+                        val num = doc.getLong("numero")?.toInt() ?: doc.getLong("number")?.toInt()
+                        val ord = doc.getLong("orden")?.toInt() ?: doc.getLong("order")?.toInt() ?: 1
+                        if (num != null) DrawnBall(numero = num, orden = ord) else null
+                    }
+                } else {
+                    subcollectionBalls = emptyList()
                 }
                 updateAndSend()
             }
@@ -133,7 +148,9 @@ class DrawRepository(
                     val name = doc.getString("nombre") ?: doc.getString("name") ?: DEFAULT_DRAW_NAME
                     val date = doc.getString("fecha") ?: doc.getString("date") ?: DEFAULT_DRAW_DATE
                     val status = doc.getString("estado") ?: doc.getString("status") ?: Draw.STATUS_OPEN
-                    val drawnBalls = parseBallsFromField(doc.get("bolillas") ?: doc.get("drawnNumbers"))
+                    val drawnBalls = parseBallsFromField(
+                        doc.get("bolillas") ?: doc.get("drawnNumbers") ?: doc.get("numeros")
+                    )
 
                     Draw(
                         id = doc.id,
@@ -181,7 +198,9 @@ class DrawRepository(
                 val name = snapshot.getString("nombre") ?: snapshot.getString("name") ?: DEFAULT_DRAW_NAME
                 val date = snapshot.getString("fecha") ?: snapshot.getString("date") ?: DEFAULT_DRAW_DATE
                 val status = snapshot.getString("estado") ?: snapshot.getString("status") ?: Draw.STATUS_OPEN
-                val drawnBalls = parseBallsFromField(snapshot.get("bolillas") ?: snapshot.get("drawnNumbers"))
+                val drawnBalls = parseBallsFromField(
+                    snapshot.get("bolillas") ?: snapshot.get("drawnNumbers") ?: snapshot.get("numeros")
+                )
                 val d = Draw(
                     id = snapshot.id,
                     name = name,
@@ -220,6 +239,7 @@ class DrawRepository(
                         is Long -> it.toInt()
                         is Int -> it
                         is Number -> it.toInt()
+                        is String -> it.toIntOrNull()
                         else -> null
                     }
                 }
@@ -235,7 +255,8 @@ class DrawRepository(
                 localEntries[entryKey] = entry
                 trySend(entry)
             } else {
-                trySend(localEntries[entryKey])
+                localEntries.remove(entryKey)
+                trySend(null)
             }
         }
         awaitClose { listener.remove() }
@@ -284,7 +305,9 @@ class DrawRepository(
         return try {
             val drawDoc = firestore.collection("draws").document(drawId).get().await()
             val status = drawDoc.getString("estado") ?: drawDoc.getString("status") ?: Draw.STATUS_OPEN
-            val drawnBalls = parseBallsFromField(drawDoc.get("bolillas") ?: drawDoc.get("drawnNumbers"))
+            val drawnBalls = parseBallsFromField(
+                drawDoc.get("bolillas") ?: drawDoc.get("drawnNumbers") ?: drawDoc.get("numeros")
+            )
 
             val isOpen = (status.equals("abierto", ignoreCase = true) || status.equals(Draw.STATUS_OPEN, ignoreCase = true)) && drawnBalls.isEmpty()
 
@@ -299,6 +322,7 @@ class DrawRepository(
                 "userEmail" to userEmail,
                 "drawId" to drawId,
                 "numeros" to sortedNumbers,
+                "numbers" to sortedNumbers,
                 "timestamp" to System.currentTimeMillis()
             )
 

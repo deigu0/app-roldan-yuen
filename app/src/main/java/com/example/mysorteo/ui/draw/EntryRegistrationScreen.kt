@@ -265,34 +265,7 @@ fun EntryRegistrationScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            // Quick Preset Testing buttons (Very useful for demonstration: Winner vs Non-winner)
-            Text(
-                text = "Accesos rápidos para prueba:",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { drawViewModel.quickPresetNumbers(listOf(5, 12, 18, 24, 30, 42)) },
-                    enabled = isDrawOpen,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Ejemplo 1 (5,12,18...)", fontSize = 11.sp)
-                }
-                OutlinedButton(
-                    onClick = { drawViewModel.quickPresetNumbers(listOf(1, 2, 3, 4, 5, 6)) },
-                    enabled = isDrawOpen,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Ejemplo 2 (1,2,3...)", fontSize = 11.sp)
-                }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -49,14 +49,18 @@ class AuthRepository(
             )
             localUser = appUser
             Result.success(appUser)
-        } catch (_: Exception) {
-            // Fallback for local emulator testing if Firebase API key is mock/unconfigured
-            val appUser = AppUser(
-                uid = "uid_${email.lowercase().hashCode()}",
-                email = email
-            )
-            localUser = appUser
-            Result.success(appUser)
+        } catch (e: Exception) {
+            if (isFirebaseAuthError(e)) {
+                Result.failure(e)
+            } else {
+                // Fallback for local testing if Firebase API key is mock/unconfigured
+                val appUser = AppUser(
+                    uid = "uid_${email.lowercase().hashCode()}",
+                    email = email
+                )
+                localUser = appUser
+                Result.success(appUser)
+            }
         }
     }
 
@@ -70,15 +74,32 @@ class AuthRepository(
             )
             localUser = appUser
             Result.success(appUser)
-        } catch (_: Exception) {
-            // Fallback for local emulator testing if Firebase API key is mock/unconfigured
-            val appUser = AppUser(
-                uid = "uid_${email.lowercase().hashCode()}",
-                email = email
-            )
-            localUser = appUser
-            Result.success(appUser)
+        } catch (e: Exception) {
+            if (isFirebaseAuthError(e)) {
+                Result.failure(e)
+            } else {
+                // Fallback for local testing if Firebase API key is mock/unconfigured
+                val appUser = AppUser(
+                    uid = "uid_${email.lowercase().hashCode()}",
+                    email = email
+                )
+                localUser = appUser
+                Result.success(appUser)
+            }
         }
+    }
+
+    private fun isFirebaseAuthError(e: Exception): Boolean {
+        val msg = e.message?.lowercase() ?: ""
+        val className = e.javaClass.simpleName
+        return className.contains("FirebaseAuth") ||
+                msg.contains("invalid-credential") ||
+                msg.contains("wrong-password") ||
+                msg.contains("user-not-found") ||
+                msg.contains("email-already-in-use") ||
+                msg.contains("badly formatted") ||
+                msg.contains("invalid-email") ||
+                msg.contains("weak-password")
     }
 
     fun logout() {
